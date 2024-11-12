@@ -1,0 +1,56 @@
+services:
+  api: &main_app
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: bedrock_be:${BEDROCK_BE_VERSION:-latest}
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      BEDROCK_BE_HOST: 0.0.0.0
+      BEDROCK_BE_DB_HOST: bedrock_be-db
+      BEDROCK_BE_DB_PORT: 5432
+      BEDROCK_BE_DB_USER: bedrock_be
+      BEDROCK_BE_DB_PASS: bedrock_be
+      BEDROCK_BE_DB_BASE: bedrock_be
+      BEDROCK_BE_REDIS_HOST: bedrock_be-redis
+
+  db:
+    image: postgres:16.3-bullseye
+    hostname: bedrock_be-db
+    environment:
+      POSTGRES_PASSWORD: "bedrock_be"
+      POSTGRES_USER: "bedrock_be"
+      POSTGRES_DB: "bedrock_be"
+    volumes:
+      - bedrock_be-db-data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: pg_isready -U bedrock_be
+      interval: 2s
+      timeout: 3s
+      retries: 40
+
+  redis:
+    image: bitnami/redis:6.2.5
+    hostname: "bedrock_be-redis"
+    restart: always
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+    healthcheck:
+      test: redis-cli ping
+      interval: 1s
+      timeout: 3s
+      retries: 50
+
+
+
+volumes:
+  bedrock_be-db-data:
+    name: bedrock_be-db-data
